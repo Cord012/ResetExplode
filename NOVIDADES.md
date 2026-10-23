@@ -1,3 +1,17 @@
+## Novidades deste fork
+
+**Nova página · RESET FERRAMENTAS › Limpeza**
+- Mede e limpa temporários do usuário e do Windows (só arquivos com mais de 24 h), Lixeira, cache de miniaturas,
+  relatórios de erro, dumps de travamento, cache dos navegadores (só cache: senhas, histórico e logins ficam) e
+  downloads antigos do Windows Update.
+- Só pastas conhecidas, não segue atalhos de pasta, pula arquivo em uso. Prefetch fica de fora de propósito.
+
+**Nova página · RESET FERRAMENTAS › Desinstalar**
+- Lista os programas instalados (64 bits, 32 bits e só do usuário), com busca e ordenação por nome, tamanho e data.
+- Desinstala pelo desinstalador oficial, com backup .reg da chave antes.
+- Procura sobras (pastas e chaves de registro) com motivo e confiança de cada item; o que é de outro programa
+  instalado aparece como NÃO MEXER. Pastas vão para a Lixeira e chaves são salvas em .reg antes de apagar.
+
 ## Novidades da v0.16
 
 **Nova página · RESET FERRAMENTAS › Inicialização**
