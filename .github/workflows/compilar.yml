@@ -1,0 +1,27 @@
+name: Compilar
+
+# Compila qualquer branch que não seja a main e deixa o .exe para baixar
+# na página da execução (seção "Artifacts"). A main continua com o "Publicar".
+on:
+  push:
+    branches-ignore: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Compilar (arquivo único, com o .NET embutido)
+        run: dotnet publish ResetExplode.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -o dist -nologo
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ResetExplode-${{ github.ref_name }}
+          path: dist/ResetExplode.exe
+          retention-days: 14
