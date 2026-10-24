@@ -20,6 +20,13 @@ public partial class App : Application
         try { _single = new Mutex(true, @"Local\ResetExplode.SingleInstance", out first); }
         catch (UnauthorizedAccessException) { first = false; } // criado por outra instância com outro nível de permissão
 
+        // Logo depois de uma atualização, a versão antiga ainda está fechando: espera ela soltar o mutex.
+        if (!first && _single != null && e.Args.Contains("--apos-atualizar"))
+        {
+            try { first = _single.WaitOne(TimeSpan.FromSeconds(20)); }
+            catch (AbandonedMutexException) { first = true; } // a antiga fechou sem soltar: é nosso
+        }
+
         if (!first)
         {
             IntPtr h = FindWindow(null, "RESET EXPLODE");

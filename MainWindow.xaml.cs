@@ -100,6 +100,7 @@ public partial class MainWindow : Window
 
         // A janela aparece já; as coletas pesadas (WMI, sensores, GPU) rodam em paralelo fora da thread da janela.
         Loaded += async (_, _) => await LoadHardwareAsync();
+        Loaded += (_, _) => InitUpdater(); // mostra a versão e procura atualização em segundo plano
 
         _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _timer.Tick += (_, _) =>
@@ -278,6 +279,8 @@ public partial class MainWindow : Window
             case "PageStartup": ScanStartup(); break;
             case "PageClean": InitClean(); break;
             case "PageUninstall": InitUninstall(); break;
+            case "PageBackups": ScanBackups(); break;
+            case "PageBigFiles": InitBigFiles(); break;
             case "PageApps": InitApps(); break;
             case "PageMakerPorts": ScanUsb(); break;
             case "PageMakerDrv": InitMakerDrivers(); break;
@@ -287,7 +290,7 @@ public partial class MainWindow : Window
 
     private void ShowPage(string name)
     {
-        foreach (var p in new FrameworkElement[] { PageDash, PageSystem, PageSensors, PageGpu, PageGames, PageBottleneck, PageOverlay, PageBench, PageOptimize, PageOc, PageInteg, PageLauncher, PageDriver, PageStartup, PageClean, PageUninstall, PageApps, PageMakerPorts, PageMakerDrv, PageDisks, PageEnergy, PageNet, PageStress })
+        foreach (var p in new FrameworkElement[] { PageDash, PageSystem, PageSensors, PageGpu, PageGames, PageBottleneck, PageOverlay, PageBench, PageOptimize, PageOc, PageInteg, PageLauncher, PageDriver, PageStartup, PageClean, PageUninstall, PageBackups, PageBigFiles, PageApps, PageMakerPorts, PageMakerDrv, PageDisks, PageEnergy, PageNet, PageStress })
             p.Visibility = p.Name == name ? Visibility.Visible : Visibility.Collapsed;
     }
 

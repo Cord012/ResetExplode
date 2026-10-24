@@ -128,6 +128,9 @@
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right"
                         WindowChrome.IsHitTestVisibleInChrome="True">
+                <Button x:Name="BtnUpdateAvailable" Style="{StaticResource PrimaryButton}" Content="ATUALIZAR" Padding="12,4" FontSize="11"
+                        Margin="0,0,8,0" VerticalAlignment="Center" Visibility="Collapsed" Click="BtnUpdate_Click" ToolTip="Tem versão nova"/>
+                <Button x:Name="BtnUpdateCheck" Style="{StaticResource CaptionButton}" Content="&#xE895;" Click="BtnUpdate_Click" ToolTip="Buscar atualização"/>
                 <Button x:Name="BtnTheme" Style="{StaticResource CaptionButton}" Content="&#xE706;" Click="Theme_Click" ToolTip="Modo claro"/>
                 <Button Style="{StaticResource CaptionButton}" Content="&#xE921;" Click="Min_Click" ToolTip="Minimizar"/>
                 <Button x:Name="BtnMax" Style="{StaticResource CaptionButton}" Content="&#xE922;" Click="Max_Click" ToolTip="Maximizar"/>
@@ -284,6 +287,12 @@
                                     <TextBlock Text="Limpeza" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </RadioButton>
+                            <RadioButton x:Name="NavBigFiles" Style="{StaticResource NavItem}" Tag="PageBigFiles" Checked="Nav_Checked">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE8B7;" FontFamily="{StaticResource Icons}" FontSize="14" Width="28" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Arquivos grandes" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </RadioButton>
                             <RadioButton x:Name="NavStartup" Style="{StaticResource NavItem}" Tag="PageStartup" Checked="Nav_Checked">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="&#xE823;" FontFamily="{StaticResource Icons}" FontSize="14" Width="28" VerticalAlignment="Center"/>
@@ -294,6 +303,12 @@
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="&#xE74D;" FontFamily="{StaticResource Icons}" FontSize="14" Width="28" VerticalAlignment="Center"/>
                                     <TextBlock Text="Desinstalar" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </RadioButton>
+                            <RadioButton x:Name="NavBackups" Style="{StaticResource NavItem}" Tag="PageBackups" Checked="Nav_Checked">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE81C;" FontFamily="{StaticResource Icons}" FontSize="14" Width="28" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Backups" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </RadioButton>
                             <RadioButton x:Name="NavApps" Style="{StaticResource NavItem}" Tag="PageApps" Checked="Nav_Checked">
@@ -2349,8 +2364,12 @@
                                     <TextBlock x:Name="UninstWaitTitle" FontWeight="SemiBold" TextWrapping="Wrap"/>
                                     <TextBlock x:Name="UninstWaitText" Foreground="{DynamicResource Muted}" FontSize="12" TextWrapping="Wrap" Margin="0,3,0,0"/>
                                 </StackPanel>
-                                <Button Grid.Column="1" Style="{StaticResource OutlineButton}" Content="PARAR DE ESPERAR" Padding="12,6" FontSize="11"
-                                        VerticalAlignment="Center" Margin="14,0,0,0" Click="BtnUninstStopWait_Click"/>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0,0,0">
+                                    <Button x:Name="BtnUninstStopWait" Style="{StaticResource OutlineButton}" Content="PARAR DE ESPERAR" Padding="12,6" FontSize="11"
+                                            Click="BtnUninstStopWait_Click" ToolTip="Para de esperar este programa (no lote, pula para o próximo)"/>
+                                    <Button x:Name="BtnUninstStopAll" Style="{StaticResource OutlineButton}" Content="PARAR TUDO" Padding="12,6" FontSize="11"
+                                            Margin="8,0,0,0" Visibility="Collapsed" Click="BtnUninstStopAll_Click"/>
+                                </StackPanel>
                             </Grid>
                         </Border>
 
@@ -2439,26 +2458,55 @@
                                         <RadioButton Style="{StaticResource Chip}" GroupName="UninstSort" Content="NOME" Tag="nome" IsChecked="True" Checked="UninstSort_Checked"/>
                                         <RadioButton Style="{StaticResource Chip}" GroupName="UninstSort" Content="TAMANHO" Tag="tamanho" Checked="UninstSort_Checked"/>
                                         <RadioButton Style="{StaticResource Chip}" GroupName="UninstSort" Content="DATA" Tag="data" Checked="UninstSort_Checked"/>
+                                        <RadioButton Style="{StaticResource Chip}" GroupName="UninstSort" Content="STORE" Tag="store" Checked="UninstSort_Checked"/>
+                                        <Button x:Name="BtnUninstSelectMode" Style="{StaticResource OutlineButton}" Content="SELECIONAR VÁRIOS" Padding="12,4"
+                                                FontSize="11" Margin="6,0,0,6" VerticalAlignment="Top" Click="BtnUninstSelectMode_Click"/>
                                     </StackPanel>
                                 </Grid>
+                                <Border x:Name="UninstBatchBar" Background="{DynamicResource Hover}" CornerRadius="12" Padding="14,10" Margin="0,4,0,10" Visibility="Collapsed">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock x:Name="UninstBatchText" VerticalAlignment="Center" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                        <CheckBox x:Name="UninstBatchQuiet" Grid.Column="1" Content="Silencioso quando possível" IsChecked="True"
+                                                  VerticalAlignment="Center" Margin="14,0,14,0"
+                                                  ToolTip="Sem janelas para programas que têm modo silencioso (MSI e QuietUninstallString). Os outros abrem o desinstalador normal."/>
+                                        <Button x:Name="BtnUninstBatch" Grid.Column="2" Style="{StaticResource PrimaryButton}" Content="DESINSTALAR SELECIONADOS"
+                                                Padding="16,7" FontSize="12" IsEnabled="False" Click="BtnUninstBatch_Click"/>
+                                    </Grid>
+                                </Border>
                                 <ItemsControl x:Name="UninstList">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <Border BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0" Padding="0,10">
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
                                                         <ColumnDefinition Width="*"/>
                                                         <ColumnDefinition Width="Auto"/>
                                                         <ColumnDefinition Width="Auto"/>
                                                     </Grid.ColumnDefinitions>
-                                                    <StackPanel>
+                                                    <CheckBox IsChecked="{Binding Selected, Mode=TwoWay}" IsEnabled="{Binding CanUninstall}" Click="UninstSelect_Click"
+                                                              VerticalAlignment="Center" Margin="0,0,12,0"
+                                                              Visibility="{Binding Tag, RelativeSource={RelativeSource AncestorType=ItemsControl}, Converter={StaticResource BoolVis}}"/>
+                                                    <Grid Grid.Column="1" Width="28" Height="28" Margin="0,0,12,0" VerticalAlignment="Center">
+                                                        <Border CornerRadius="8" Background="{DynamicResource Hover}"/>
+                                                        <TextBlock x:Name="glyph" Text="&#xE71D;" FontFamily="{StaticResource Icons}" FontSize="14"
+                                                                   Foreground="{DynamicResource Muted}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        <Image Source="{Binding Icon}" Width="22" Height="22" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                                    </Grid>
+                                                    <StackPanel Grid.Column="2">
                                                         <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}"/>
                                                         <TextBlock Text="{Binding Detail}" Foreground="{DynamicResource Muted}" FontSize="12"
                                                                    TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
                                                     </StackPanel>
-                                                    <TextBlock Grid.Column="1" Text="{Binding SizeText}" FontFamily="{StaticResource Mono}" FontSize="12"
+                                                    <TextBlock Grid.Column="3" Text="{Binding SizeText}" FontFamily="{StaticResource Mono}" FontSize="12"
                                                                Foreground="{DynamicResource Muted}" VerticalAlignment="Center" Margin="14,0,14,0"/>
-                                                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
                                                         <Button Style="{StaticResource OutlineButton}" Content="SOBRAS" Padding="12,5" FontSize="11"
                                                                 Tag="{Binding}" Click="UninstLeftovers_Click" Margin="0,0,8,0"
                                                                 ToolTip="Ver o que provavelmente vai ficar para trás"/>
@@ -2467,12 +2515,199 @@
                                                     </StackPanel>
                                                 </Grid>
                                             </Border>
+                                            <DataTemplate.Triggers>
+                                                <DataTrigger Binding="{Binding HasIcon}" Value="True">
+                                                    <Setter TargetName="glyph" Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding IsStore}" Value="True">
+                                                    <Setter TargetName="glyph" Property="Text" Value="&#xE719;"/>
+                                                </DataTrigger>
+                                            </DataTemplate.Triggers>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
                                 <TextBlock x:Name="UninstResult" TextWrapping="Wrap" Margin="0,10,0,0"/>
                             </StackPanel>
                         </Border>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- ===== BACKUPS (cópias .reg feitas pelo Desinstalar) ===== -->
+                <ScrollViewer x:Name="PageBackups" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="36,30,36,30">
+                        <Grid Margin="0,0,0,20">
+                            <StackPanel Margin="0,0,190,0">
+                                <TextBlock Text="BACKUPS" Style="{StaticResource H1}"/>
+                                <TextBlock Text="Cópias do registro feitas antes de desinstalar ou de remover sobras · restaure o que precisar" Style="{StaticResource Sub}" TextWrapping="Wrap"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+                                <Button Style="{StaticResource OutlineButton}" Content="ABRIR PASTA" Padding="16,9" Margin="0,0,8,0" Click="BtnBackupsFolder_Click"/>
+                                <Button Style="{StaticResource PrimaryButton}" Content="ATUALIZAR" Padding="20,9" Click="BtnBackupsScan_Click"/>
+                            </StackPanel>
+                        </Grid>
+                        <Border Style="{StaticResource CardBorder}">
+                            <StackPanel>
+                                <TextBlock x:Name="BackupsSummary" Text="BACKUPS" Style="{StaticResource Label}"/>
+                                <TextBlock Foreground="{DynamicResource Faint}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,10">
+                                    SOBRA: restaurar devolve a chave exatamente como estava. DESINSTALAÇÃO: restaurar só põe o programa
+                                    de volta na lista; os arquivos dele já foram removidos, então para usar de novo é preciso reinstalar.
+                                    Pastas removidas como sobra estão na Lixeira do Windows.
+                                </TextBlock>
+                                <ItemsControl x:Name="BackupsList">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0" Padding="0,10">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel>
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <Border CornerRadius="8" Padding="7,1" BorderThickness="1" BorderBrush="{DynamicResource LineStrong}"
+                                                                    Margin="0,0,8,0" VerticalAlignment="Center">
+                                                                <TextBlock Text="{Binding KindText}" FontSize="9.5" FontWeight="Bold" Foreground="{DynamicResource Muted}"/>
+                                                            </Border>
+                                                            <TextBlock Text="{Binding Label}" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                        </StackPanel>
+                                                        <TextBlock Text="{Binding Key}" FontFamily="{StaticResource Mono}" FontSize="11.5" TextWrapping="Wrap"
+                                                                   Foreground="{DynamicResource Muted}" Margin="0,5,0,0"/>
+                                                        <TextBlock Text="{Binding WhenText}" Foreground="{DynamicResource Faint}" FontSize="10.5" Margin="0,2,0,0"/>
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0,0,0">
+                                                        <Button Style="{StaticResource OutlineButton}" Content="APAGAR" Padding="12,5" FontSize="11"
+                                                                Tag="{Binding}" Click="BackupDelete_Click" Margin="0,0,8,0"/>
+                                                        <Button Style="{StaticResource PrimaryButton}" Content="RESTAURAR" Padding="12,5" FontSize="11"
+                                                                Tag="{Binding}" Click="BackupRestore_Click" ToolTip="{Binding Hint}"/>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock x:Name="BackupsResult" TextWrapping="Wrap" Margin="0,10,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- ===== ARQUIVOS GRANDES (o que mais ocupa espaço) ===== -->
+                <ScrollViewer x:Name="PageBigFiles" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="36,30,36,30">
+                        <StackPanel Margin="0,0,0,20">
+                            <TextBlock Text="ARQUIVOS GRANDES" Style="{StaticResource H1}"/>
+                            <TextBlock Text="O que mais ocupa espaço numa unidade ou pasta · você decide o que apagar" Style="{StaticResource Sub}" TextWrapping="Wrap"/>
+                        </StackPanel>
+
+                        <Border Style="{StaticResource CardBorder}" Margin="0,0,0,14">
+                            <StackPanel>
+                                <TextBlock Text="ONDE PROCURAR" Style="{StaticResource Label}"/>
+                                <WrapPanel x:Name="BigDrives" Margin="0,0,0,4"/>
+                                <Grid Margin="0,6,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock x:Name="BigPath" FontFamily="{StaticResource Mono}" TextTrimming="CharacterEllipsis" Text="Escolha uma unidade ou pasta"/>
+                                        <TextBlock x:Name="BigStatus" Foreground="{DynamicResource Muted}" FontSize="12" Margin="0,3,0,0" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button x:Name="BtnBigUp" Style="{StaticResource OutlineButton}" Content="VOLTAR" Padding="12,6" FontSize="11"
+                                                Margin="0,0,8,0" IsEnabled="False" Click="BtnBigUp_Click" ToolTip="Pasta de cima"/>
+                                        <Button Style="{StaticResource OutlineButton}" Content="ESCOLHER PASTA" Padding="12,6" FontSize="11"
+                                                Margin="0,0,8,0" Click="BtnBigPick_Click"/>
+                                        <Button x:Name="BtnBigStop" Style="{StaticResource OutlineButton}" Content="PARAR" Padding="12,6" FontSize="11"
+                                                Visibility="Collapsed" Click="BtnBigStop_Click"/>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="14"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Style="{StaticResource CardBorder}" VerticalAlignment="Top">
+                                <StackPanel>
+                                    <TextBlock Text="PASTAS · CLIQUE PARA ENTRAR" Style="{StaticResource Label}"/>
+                                    <ItemsControl x:Name="BigFolderList">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Button Tag="{Binding}" Click="BigFolder_Click" Cursor="Hand" Background="Transparent" BorderThickness="0"
+                                                        HorizontalContentAlignment="Stretch" Padding="0">
+                                                    <Button.Template>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border x:Name="b" Background="Transparent" BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0" Padding="0,9">
+                                                                <ContentPresenter/>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="b" Property="Background" Value="{DynamicResource Hover}"/>
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Button.Template>
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <StackPanel Margin="4,0,0,0">
+                                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{DynamicResource Fg}" TextTrimming="CharacterEllipsis"/>
+                                                            <TextBlock Text="{Binding Detail}" Foreground="{DynamicResource Faint}" FontSize="10.5" TextTrimming="CharacterEllipsis"/>
+                                                        </StackPanel>
+                                                        <StackPanel Grid.Column="1" Margin="12,0,4,0" VerticalAlignment="Center">
+                                                            <TextBlock Text="{Binding SizeText}" FontFamily="{StaticResource Mono}" FontSize="12" Foreground="{DynamicResource Fg}" HorizontalAlignment="Right"/>
+                                                            <Border Height="4" Width="{Binding BarWidth}" Background="{DynamicResource Fg}" CornerRadius="2"
+                                                                    HorizontalAlignment="Right" Margin="0,4,0,0" Opacity="0.7"/>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="2" Style="{StaticResource CardBorder}" VerticalAlignment="Top">
+                                <StackPanel>
+                                    <TextBlock Text="MAIORES ARQUIVOS" Style="{StaticResource Label}"/>
+                                    <ItemsControl x:Name="BigFileList">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0" Padding="0,9">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <StackPanel>
+                                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding Path}"/>
+                                                            <TextBlock Text="{Binding Detail}" Foreground="{DynamicResource Faint}" FontSize="10.5" TextWrapping="Wrap"/>
+                                                            <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                                                <Button Style="{StaticResource OutlineButton}" Content="MOSTRAR" Padding="10,3" FontSize="10.5"
+                                                                        Tag="{Binding}" Click="BigShow_Click" Margin="0,0,6,0"/>
+                                                                <Button x:Name="recycle" Style="{StaticResource OutlineButton}" Content="LIXEIRA" Padding="10,3" FontSize="10.5"
+                                                                        Tag="{Binding}" Click="BigRecycle_Click" IsEnabled="{Binding CanRecycle}"/>
+                                                            </StackPanel>
+                                                        </StackPanel>
+                                                        <TextBlock Grid.Column="1" Text="{Binding SizeText}" FontFamily="{StaticResource Mono}" FontSize="12"
+                                                                   VerticalAlignment="Top" Margin="12,0,0,0"/>
+                                                    </Grid>
+                                                </Border>
+                                                <DataTemplate.Triggers>
+                                                    <DataTrigger Binding="{Binding Protected}" Value="True">
+                                                        <Setter TargetName="recycle" Property="ToolTip" Value="Arquivo do Windows ou de programa instalado: use Desinstalar ou a Limpeza"/>
+                                                    </DataTrigger>
+                                                </DataTemplate.Triggers>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
                     </StackPanel>
                 </ScrollViewer>
 

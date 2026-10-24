@@ -26,7 +26,7 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Publicar (arquivo único, com o .NET embutido)
-        run: dotnet publish ResetExplode.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -o dist -nologo
+        run: dotnet publish ResetExplode.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -p:SourceRevisionId=${{ github.sha }} -o dist -nologo
 
       - name: Montar pacote
         shell: pwsh
@@ -41,7 +41,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           $sha = "$env:GITHUB_SHA".Substring(0, 7)
-          gh release delete latest --cleanup-tag --yes
+          # No primeiro build de um fork ainda não existe release "latest": só apaga se existir
+          gh release view latest *> $null
+          if ($LASTEXITCODE -eq 0) { gh release delete latest --cleanup-tag --yes }
           gh release create latest ResetExplode.zip dist/ResetExplode.exe --target $env:GITHUB_SHA --latest --title "RESET EXPLODE (versão mais recente)" --notes-file NOVIDADES.md
 
       - name: Release da versão (tag)

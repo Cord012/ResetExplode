@@ -1,5 +1,23 @@
 ## Novidades deste fork
 
+**Atualização automática**
+- Botão de atualizar na barra de título: confere a última versão publicada no GitHub, baixa, confere o SHA-256 e troca o
+  executável sozinho (fecha e abre de novo). Ao abrir, o app já avisa quando tem versão nova.
+- A versão e o commit aparecem no rodapé do menu.
+
+**Desinstalar**
+- Apps da Microsoft Store na lista (Spotify, Xbox, Clipchamp…), com desinstalação pelo Windows.
+- Ícone de cada programa.
+- Desinstalar vários de uma vez, um por vez, em modo silencioso quando o programa suporta.
+- A lista se atualiza sozinha quando um programa é desinstalado (até pelas Configurações do Windows).
+
+**Nova página · RESET FERRAMENTAS › Backups**
+- Lista os .reg salvos antes de desinstalar ou remover sobras, com RESTAURAR e APAGAR.
+
+**Nova página · RESET FERRAMENTAS › Arquivos grandes**
+- Pastas e maiores arquivos de uma unidade ou pasta, com tamanho, entrar na pasta, mostrar no Explorer e mandar para a Lixeira.
+- Arquivos do Windows (pagefile, hiberfil) e de programas instalados ficam protegidos, com explicação.
+
 **Nova página · RESET FERRAMENTAS › Limpeza**
 - Mede e limpa temporários do usuário e do Windows (só arquivos com mais de 24 h), Lixeira, cache de miniaturas,
   relatórios de erro, dumps de travamento, cache dos navegadores (só cache: senhas, histórico e logins ficam) e

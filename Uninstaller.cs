@@ -16,7 +16,7 @@ namespace ResetExplode;
 //   HKLM\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall   (32 bits)
 //   HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall               (só este usuário)
 
-public sealed class InstalledApp
+public sealed class InstalledApp : INotifyPropertyChanged
 {
     public string Name { get; init; } = "";
     public string Version { get; init; } = "";
@@ -26,15 +26,23 @@ public sealed class InstalledApp
     public string InstallLocation { get; init; } = "";
     public string UninstallString { get; init; } = "";
     public string QuietUninstallString { get; init; } = "";
+    public string DisplayIcon { get; init; } = "";
     public string Scope { get; init; } = "";
+    /// <summary>Identifica o programa. Win32: a chave Uninstall. Store: a chave do pacote no repositório AppModel.</summary>
     public string RegPath { get; init; } = "";
     public string KeyName { get; init; } = "";
     public bool SystemComponent { get; init; }
     public bool IsUpdate { get; init; }
 
+    // Apps da Microsoft Store (pacotes AppX/MSIX)
+    public bool IsStore { get; init; }
+    public string PackageFullName { get; init; } = "";
+    public string PackageFamilyName { get; init; } = "";
+
     public bool Visible => !SystemComponent && !IsUpdate;
-    public bool CanUninstall => UninstallString.Length > 0;
-    public bool IsMsi => Uninstaller.IsMsiexec(UninstallString);
+    public bool CanUninstall => IsStore || UninstallString.Length > 0;
+    public bool CanQuiet => IsStore || QuietUninstallString.Length > 0 || IsMsi;
+    public bool IsMsi => !IsStore && Uninstaller.IsMsiexec(UninstallString);
     public bool NeedsAdmin => RegPath.StartsWith("HKLM", StringComparison.OrdinalIgnoreCase);
 
     public string PrettyDate => InstallDate.Length == 8
@@ -42,6 +50,18 @@ public sealed class InstalledApp
     public string SizeText => SizeKB > 0 ? Uninstaller.HumanSize(SizeKB * 1024) : "";
     public string Detail => string.Join("  ·  ", new[]
         { Publisher, Version.Length > 0 ? "v" + Version : "", PrettyDate, Scope }.Where(s => s.Length > 0));
+
+    // ---- Estado da tela (seleção em lote e ícone carregado em segundo plano) ----
+    private bool _selected;
+    public bool Selected { get => _selected; set { _selected = value; Changed(nameof(Selected)); } }
+
+    private object? _icon;
+    /// <summary>ImageSource do WPF (object aqui para a lógica não depender do WPF).</summary>
+    public object? Icon { get => _icon; set { _icon = value; Changed(nameof(Icon)); Changed(nameof(HasIcon)); } }
+    public bool HasIcon => _icon != null;
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+    private void Changed(string n) => PropertyChanged?.Invoke(this, new(n));
 }
 
 public sealed class Leftover : INotifyPropertyChanged
@@ -121,6 +141,7 @@ public static class Uninstaller
                 if (seen.Add($"{app.Name}|{app.Version}|{app.Publisher}")) apps.Add(app);
             }
         }
+        try { apps.AddRange(StoreApps.List()); } catch { } // sem PowerShell/AppX: segue só com os Win32
         return apps.OrderBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
     }
 
@@ -131,7 +152,7 @@ public static class Uninstaller
     public static string Signature()
     {
         var sb = new StringBuilder();
-        foreach (var (rootPath, _) in Roots)
+        foreach (var rootPath in Roots.Select(r => r.Path).Append(StoreApps.RepositoryRoot))
             foreach (var k in SubKeys(rootPath).OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
                 sb.Append(k).Append('|');
         return sb.ToString();
@@ -171,6 +192,7 @@ public static class Uninstaller
                 InstallLocation = S("InstallLocation").Trim('"'),
                 UninstallString = S("UninstallString"),
                 QuietUninstallString = S("QuietUninstallString"),
+                DisplayIcon = S("DisplayIcon"),
                 Scope = scope,
                 RegPath = path,
                 KeyName = keyName,
@@ -205,6 +227,27 @@ public static class Uninstaller
     /// Roda a UninstallString como o Windows rodaria: pelo cmd, porque ela vem em todo formato
     /// (com e sem aspas, com argumentos). O cmd fica escondido; a janela do desinstalador aparece normal.
     /// </summary>
+    public static Task UninstallAsync(InstalledApp app, bool quiet) => app.IsStore
+        ? StoreApps.RemoveAsync(app.PackageFullName)
+        : RunUninstallerAsync(QuietCommand(app, quiet));
+
+    /// <summary>
+    /// Linha de comando a usar. No modo silencioso: QuietUninstallString se o programa tiver;
+    /// MSI ganha /qn (sem janelas) e /norestart; sem nenhum dos dois, cai no desinstalador normal.
+    /// </summary>
+    public static string QuietCommand(InstalledApp app, bool quiet)
+    {
+        if (!quiet) return app.UninstallString;
+        if (app.QuietUninstallString.Length > 0) return app.QuietUninstallString;
+        if (app.IsMsi)
+        {
+            // MsiExec.exe /I{GUID} (modificar) vira /X{GUID} (remover)
+            var m = Regex.Match(app.UninstallString, @"\{[0-9A-Fa-f\-]{36}\}");
+            if (m.Success) return $"MsiExec.exe /X{m.Value} /qn /norestart";
+        }
+        return app.UninstallString;
+    }
+
     public static async Task RunUninstallerAsync(string commandLine)
     {
         string cmd = Environment.GetEnvironmentVariable("ComSpec") ?? @"C:\Windows\System32\cmd.exe";
@@ -362,6 +405,7 @@ public static class Uninstaller
     {
         Func<string, List<string>> getSubKeys = subKeys ?? SubKeys;
         Func<string, bool> exists = keyExists ?? KeyExists;
+        if (app.IsStore) return StoreApps.FindLeftovers(app, exists);
         Targets t = TargetsFor(app);
 
         // O que pertence a outros programas instalados
