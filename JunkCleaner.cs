@@ -1,3 +1,4 @@
+using System.IO;
 namespace ResetExplode;
 
 // RESET LIMPEZA: arquivos temporários e caches que o Windows e os programas recriam sozinhos.
