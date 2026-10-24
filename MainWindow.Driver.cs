@@ -50,6 +50,8 @@ public partial class MainWindow
             _drvGpus = await Task.Run(DriverManager.ReadGpus);
             _drvBoardInfo = await Task.Run(DriverManager.ReadBoard);
             ShowBoard();
+            // "Driver Studio" é coisa só da NVIDIA: some quando não tem placa NVIDIA
+            DrvStudio.Visibility = _drvGpus.Any(g => g.Vendor == "NVIDIA") ? Visibility.Visible : Visibility.Collapsed;
 
             bool studio = DrvStudio.IsChecked == true;
             int i = 0;

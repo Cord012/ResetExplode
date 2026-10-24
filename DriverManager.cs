@@ -198,6 +198,33 @@ public static class DriverManager
     }
 
 
+    /// <summary>Nome do processador ("AMD Ryzen 5 5600G with Radeon Graphics").</summary>
+    public static string? ReadCpuName()
+    {
+        try
+        {
+            using var s = new ManagementObjectSearcher("SELECT Name FROM Win32_Processor");
+            foreach (ManagementObject o in s.Get()) using (o) return Str(o, "Name");
+        }
+        catch { }
+        return null;
+    }
+
+    /// <summary>
+    /// Página de drivers da AMD para um Ryzen com vídeo integrado, no mesmo padrão das placas RX:
+    /// "AMD Ryzen 5 5600G with Radeon Graphics" → .../processors/ryzen/ryzen-5000-series/amd-ryzen-5-5600g.html
+    /// Vazio se o nome não for de um Ryzen reconhecível.
+    /// </summary>
+    public static string AmdIntegratedPage(string? cpuName)
+    {
+        if (cpuName == null) return "";
+        var m = Regex.Match(cpuName, @"Ryzen\s+(\d)\s+(?:PRO\s+)?(\d{4})([A-Z]{0,3})\b", RegexOptions.IgnoreCase);
+        if (!m.Success) return "";
+        string tier = m.Groups[1].Value, model = m.Groups[2].Value, suffix = m.Groups[3].Value.ToLowerInvariant();
+        string series = $"ryzen-{model[0]}000-series";
+        return $"https://www.amd.com/en/support/downloads/drivers.html/processors/ryzen/{series}/amd-ryzen-{tier}-{model}{suffix}.html";
+    }
+
     /// <summary>
     /// AMD não tem API de versão: abre a página oficial do modelo (a URL segue um padrão) e procura o link direto do instalador.
     /// Se o site mudar ou bloquear, cai para abrir a página manualmente.
@@ -208,11 +235,28 @@ public static class DriverManager
         try
         {
             var m = Regex.Match(g.GpuName, @"RX\s*(\d{4})\s*(XTX|XT|GRE|M)?", RegexOptions.IgnoreCase);
-            if (!m.Success) { g.Message = "AMD: modelo não reconhecido para consulta automática. Use a página oficial."; return; }
-            int n = int.Parse(m.Groups[1].Value);
-            string fam = $"radeon-rx-{n / 1000}000-series";
-            string suffix = m.Groups[2].Success ? "-" + m.Groups[2].Value.ToLowerInvariant() : "";
-            string page = $"https://www.amd.com/en/support/downloads/drivers.html/graphics/radeon-rx/{fam}/amd-radeon-rx-{n}{suffix}.html";
+            string page;
+            string? cpu = null;
+            if (m.Success)
+            {
+                int n = int.Parse(m.Groups[1].Value);
+                string fam = $"radeon-rx-{n / 1000}000-series";
+                string suffix = m.Groups[2].Success ? "-" + m.Groups[2].Value.ToLowerInvariant() : "";
+                page = $"https://www.amd.com/en/support/downloads/drivers.html/graphics/radeon-rx/{fam}/amd-radeon-rx-{n}{suffix}.html";
+            }
+            else
+            {
+                // Vídeo integrado do Ryzen: o Windows chama de "AMD Radeon(TM) Graphics" (ou "Radeon Vega"), sem modelo.
+                // O driver é o mesmo do PROCESSADOR, então a página certa é a do Ryzen.
+                cpu = ReadCpuName();
+                page = AmdIntegratedPage(cpu);
+                if (page.Length == 0)
+                {
+                    g.Message = $"AMD: vídeo integrado do processador ({(cpu ?? "modelo desconhecido")}). Na página oficial, use a "
+                              + "ferramenta de detecção automática (\"Auto-Detect and Install\"), que serve para vídeo integrado.";
+                    return;
+                }
+            }
             g.OfficialPage = page;
             using var req = new HttpRequestMessage(HttpMethod.Get, page);
             req.Headers.Referrer = new Uri("https://www.amd.com/");
@@ -220,11 +264,18 @@ public static class DriverManager
             string html = await resp.Content.ReadAsStringAsync(ct);
             var hit = Regex.Match(html, @"https://drivers\.amd\.com/drivers/[^""'\s<>\\]*win11[^""'\s<>\\]*\.exe", RegexOptions.IgnoreCase);
             if (!hit.Success) hit = Regex.Match(html, @"https://drivers\.amd\.com/drivers/[^""'\s<>\\]*\.exe", RegexOptions.IgnoreCase);
-            if (!hit.Success) { g.Message = "AMD: o site não devolveu o link do instalador (pode estar protegido). Abra a página oficial do seu modelo."; return; }
+            if (!hit.Success)
+            {
+                g.Message = cpu != null
+                    ? $"AMD: vídeo integrado do {cpu}. O site não devolveu o link do instalador; ABRIR PÁGINA OFICIAL já abre a página do seu processador."
+                    : "AMD: o site não devolveu o link do instalador (pode estar protegido). Abra a página oficial do seu modelo.";
+                return;
+            }
             g.DownloadUrl = hit.Value;
             var v = Regex.Match(hit.Value, @"edition-([\d.]+)", RegexOptions.IgnoreCase);
             g.Latest = v.Success ? v.Groups[1].Value : Path.GetFileNameWithoutExtension(hit.Value);
-            g.Message = $"AMD Software Adrenalin {g.Latest} disponível para o seu modelo. Compare com a versão mostrada no AMD Software (o Windows mostra {g.Installed}).";
+            g.Message = $"AMD Software Adrenalin {g.Latest} disponível para o seu {(cpu != null ? $"processador ({cpu}), que inclui o vídeo integrado" : "modelo")}. "
+                      + $"Compare com a versão mostrada no AMD Software (o Windows mostra {g.Installed}).";
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex) { g.Message = "Não foi possível consultar a AMD: " + ex.Message; }
