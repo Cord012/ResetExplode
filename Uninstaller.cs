@@ -124,6 +124,32 @@ public static class Uninstaller
         return apps.OrderBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
     }
 
+    /// <summary>
+    /// "Impressão digital" da lista: os nomes das chaves das três raízes. Muda quando qualquer
+    /// programa é instalado ou desinstalado (até fora do app). Barato de calcular a cada poucos segundos.
+    /// </summary>
+    public static string Signature()
+    {
+        var sb = new StringBuilder();
+        foreach (var (rootPath, _) in Roots)
+            foreach (var k in SubKeys(rootPath).OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
+                sb.Append(k).Append('|');
+        return sb.ToString();
+    }
+
+    /// <summary>Espera a chave do programa sumir (desinstalação concluída). false = cancelado ou tempo esgotado.</summary>
+    public static async Task<bool> WaitUntilGoneAsync(string regPath, TimeSpan timeout, CancellationToken ct)
+    {
+        var until = DateTime.UtcNow + timeout;
+        while (DateTime.UtcNow < until)
+        {
+            if (!KeyExists(regPath)) return true;
+            try { await Task.Delay(1000, ct); }
+            catch (OperationCanceledException) { return false; }
+        }
+        return !KeyExists(regPath);
+    }
+
     private static InstalledApp? Read(string path, string keyName, string scope)
     {
         try

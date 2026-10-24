@@ -2,6 +2,7 @@ using System.IO;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Threading;
 
 namespace ResetExplode;
 
@@ -13,17 +14,47 @@ public partial class MainWindow
     private List<Leftover> _leftovers = new();
     private string _uninstSort = "nome";
     private bool _uninstBusy;
+    private bool _uninstLoading;
+    private string _uninstSignature = "";
+    private DispatcherTimer? _uninstWatch;
+    private CancellationTokenSource? _uninstWait;
 
     private async void InitUninstall()
     {
+        StartUninstallWatch();
         if (_installedApps.Count == 0) await LoadInstalledApps();
+    }
+
+    /// <summary>
+    /// Enquanto a aba está aberta, confere a cada 3 s se a lista de instalados mudou
+    /// (instalou/desinstalou algo, até pelas Configurações do Windows) e recarrega sozinho.
+    /// </summary>
+    private void StartUninstallWatch()
+    {
+        if (_uninstWatch != null) return;
+        _uninstWatch = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+        _uninstWatch.Tick += async (_, _) =>
+        {
+            if (!PageUninstall.IsVisible || _uninstLoading || _uninstBusy) return;
+            string sig = await Task.Run(Uninstaller.Signature);
+            if (sig != _uninstSignature) await LoadInstalledApps();
+        };
+        _uninstWatch.Start();
     }
 
     private async Task LoadInstalledApps()
     {
-        UninstSummary.Text = "LENDO O REGISTRO…";
-        try { _installedApps = await Task.Run(Uninstaller.List); }
+        if (_uninstLoading) return;
+        _uninstLoading = true;
+        if (_installedApps.Count == 0) UninstSummary.Text = "LENDO O REGISTRO…";
+        try
+        {
+            var (apps, sig) = await Task.Run(() => (Uninstaller.List(), Uninstaller.Signature()));
+            _installedApps = apps;
+            _uninstSignature = sig;
+        }
         catch (Exception ex) { UninstSummary.Text = "NÃO FOI POSSÍVEL LER"; UninstResult.Text = ex.Message; return; }
+        finally { _uninstLoading = false; }
         FillInstalledApps();
     }
 
@@ -171,29 +202,42 @@ public partial class MainWindow
         catch (Exception ex) { UninstResult.Text = $"{app.Name}: {ex.Message}. Nada foi alterado."; return; }
 
         _uninstBusy = true;
-        UninstResult.Text = $"Desinstalador de {app.Name} aberto. Termine o processo na janela dele…";
-        try { await Uninstaller.RunUninstallerAsync(app.UninstallString); }
-        catch (Exception ex) { UninstResult.Text = $"{app.Name}: o desinstalador não abriu ({ex.Message})."; _uninstBusy = false; return; }
+        _uninstWait = new CancellationTokenSource();
+        UninstWaitCard.Visibility = Visibility.Visible;
+        UninstWaitTitle.Text = $"Desinstalando {app.Name}…";
+        UninstWaitText.Text = "Termine o processo na janela do desinstalador. Quando ele acabar, o programa some daqui sozinho.";
+        UninstWaitCard.BringIntoView();
 
-        // Muitos desinstaladores (NSIS, Inno) se copiam para o %TEMP% e o processo original
-        // fecha antes de terminar. Então confere antes de concluir.
-        while (Uninstaller.KeyExists(app.RegPath))
+        try { await Uninstaller.RunUninstallerAsync(app.UninstallString); }
+        catch (Exception ex)
         {
-            var r = MessageBox.Show(
-                $"{app.Name} ainda aparece como instalado.\n\nSe a janela do desinstalador ainda está aberta, termine nela e clique OK "
-                + "para verificar de novo. Se você cancelou a desinstalação, clique Cancelar.",
-                "RESET EXPLODE", MessageBoxButton.OKCancel, MessageBoxImage.Information);
-            if (r != MessageBoxResult.OK)
-            {
-                _uninstBusy = false;
-                UninstResult.Text = $"{app.Name}: desinstalação não concluída. Backup da chave: {backup}";
-                return;
-            }
+            UninstWaitCard.Visibility = Visibility.Collapsed;
+            UninstResult.Text = $"{app.Name}: o desinstalador não abriu ({ex.Message}).";
+            _uninstBusy = false;
+            return;
         }
 
+        // Muitos desinstaladores (NSIS, Inno) se copiam para o %TEMP% e o processo original fecha
+        // antes de terminar. Então, em vez de confiar no "fechou", espera a chave sumir do registro.
+        UninstWaitText.Text = "Esperando o desinstalador terminar. Se você cancelou a desinstalação, clique em PARAR DE ESPERAR.";
+        bool gone = await Uninstaller.WaitUntilGoneAsync(app.RegPath, TimeSpan.FromMinutes(30), _uninstWait.Token);
+        UninstWaitCard.Visibility = Visibility.Collapsed;
         _uninstBusy = false;
+
+        if (!gone)
+        {
+            UninstResult.Text = $"{app.Name}: desinstalação não concluída. Se ela terminar depois, a lista se atualiza sozinha. Backup da chave: {backup}";
+            return;
+        }
+
+        // Tira da tela na hora; depois relê o registro inteiro em segundo plano.
+        _installedApps.RemoveAll(a => a.RegPath == app.RegPath);
+        FillInstalledApps();
         UninstResult.Text = $"{app.Name} desinstalado.";
-        await LoadInstalledApps();
+        Toast("Programa desinstalado", app.Name, "");
+        _ = LoadInstalledApps();
         await ShowLeftovers(app, removed: true, backup: backup);
     }
+
+    private void BtnUninstStopWait_Click(object sender, RoutedEventArgs e) => _uninstWait?.Cancel();
 }

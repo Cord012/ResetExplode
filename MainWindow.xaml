@@ -2338,6 +2338,22 @@
                                     HorizontalAlignment="Right" VerticalAlignment="Top" Click="BtnUninstScan_Click"/>
                         </Grid>
 
+                        <!-- Espera do desinstalador: some sozinho quando o programa sai do registro -->
+                        <Border x:Name="UninstWaitCard" Style="{StaticResource CardBorder}" Margin="0,0,0,14" Padding="20,14" Visibility="Collapsed">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock x:Name="UninstWaitTitle" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                    <TextBlock x:Name="UninstWaitText" Foreground="{DynamicResource Muted}" FontSize="12" TextWrapping="Wrap" Margin="0,3,0,0"/>
+                                </StackPanel>
+                                <Button Grid.Column="1" Style="{StaticResource OutlineButton}" Content="PARAR DE ESPERAR" Padding="12,6" FontSize="11"
+                                        VerticalAlignment="Center" Margin="14,0,0,0" Click="BtnUninstStopWait_Click"/>
+                            </Grid>
+                        </Border>
+
                         <!-- Sobras: aparece depois de "SOBRAS" ou de uma desinstalação -->
                         <Border x:Name="UninstLeftCard" Style="{StaticResource CardBorder}" Margin="0,0,0,14" Visibility="Collapsed">
                             <StackPanel>
